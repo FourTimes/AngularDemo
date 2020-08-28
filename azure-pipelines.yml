@@ -1,0 +1,58 @@
+---
+trigger: 
+  - master
+resources:
+- repo: self
+
+stages:
+- stage: Build
+  displayName: Frontend_image
+  jobs:  
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: 'ubuntu-latest'
+
+    steps:
+    - task: NodeTool@0
+      displayName: 'Use Node 12.x'
+      inputs:
+        versionSpec: 12.x
+
+    - task: Npm@1
+      displayName: 'npm install'
+      inputs:
+        workingDir: frontend/wbgangular # angular exact directory
+        verbose: false
+
+    - task: Npm@1
+      displayName: 'npm Build'
+      inputs:
+        command: custom
+        workingDir: frontend/wbgangular # angular exact directory
+        verbose: false
+        customCommand: 'run build --prod'
+
+    - task: PublishPipelineArtifact@1
+      displayName: 'Publish Build Artifact'
+      inputs:
+        targetPath: frontend/wbgangular/dist/wbgangular
+        artifact: angular # artifcats name called
+
+    - task: ArchiveFiles@2
+      displayName: 'Angular zip'
+      inputs:
+        rootFolderOrFile: frontend/wbgangular/dist/wbgangular
+        archiveFile: '$(Build.ArtifactStagingDirectory)/angular.zip'
+
+    - task: AzureWebApp@1
+      displayName: 'Angular deployment'
+      inputs:
+        azureSubscription: WbAdocredentials # service principle name
+        appType: webAppLinux                # app type
+        appName: www                        # app name > change here
+        package: '$(Build.ArtifactStagingDirectory)/angular.zip'
+
+
+
+# $(Build.BuildId).zip
