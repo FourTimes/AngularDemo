@@ -1,0 +1,50 @@
+---
+trigger: none
+resources:
+- repo: self
+
+stages:
+- stage: STAGE
+  displayName: 'BUILD'
+  jobs:  
+  - job: 'BUILDPROCESS'
+    displayName: BUILD
+    pool:
+      vmImage: 'windows-server'
+    steps:
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet restore'
+      inputs:
+        command: restore
+        projects: continuous1/continuous1.csproj
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet build'
+      inputs:
+        projects: continuous1/continuous1.csproj
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet publish'
+      inputs:
+        command: publish
+        publishWebProjects: false
+        projects: continuous1/continuous1.csproj
+        arguments: '--output $(Build.ArtifactStagingDirectory)\WebJob\App_Data\jobs\continuous\MyWebJobtwo '
+        zipAfterPublish: false
+        modifyOutputPath: false
+    - powershell: |
+        Move-Item  -Path settings.job  -Destination $(Build.ArtifactStagingDirectory)\WebJob\App_Data\jobs\continuous\MyWebJobtwo\
+        Move-Item -Path run.cmd  -Destination $(Build.ArtifactStagingDirectory)\WebJob\App_Data\jobs\continuous\MyWebJobtwo\ 
+      workingDirectory: continuous1
+      displayName: 'PowerShell Script'
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact: drop'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)\WebJob\App_Data\jobs\continuous\'
+    - task: AzureRmWebAppDeployment@4
+      displayName: 'Azure App Service Deploy: testjaye'
+      inputs:
+        azureSubscription: 'Free Trial (1eccc4af-d37c-41ea-9978-5dafe23e5930)'
+        WebAppName: testjaye
+        packageForLinux: '$(Build.ArtifactStagingDirectory)\WebJob'
+        
+        
+# Reference: https://github.com/markheath/net-core-webjobshttps://github.com/markheath/net-core-webjobs        
